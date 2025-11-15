@@ -213,7 +213,6 @@ async function getAllGamepassesWithPrices(games) {
     return results;
 }
 
-// Função para buscar T-Shirts (categoria 3)
 async function getUserCreatedTShirts(username) {
     try {
         const data = await makeRequest(
@@ -234,8 +233,7 @@ async function getUserCreatedTShirts(username) {
                         displayName: item.name,
                         price: price,
                         hasPrice: price > 0,
-                        priceSource: 'catalog',
-                        itemType: 'TShirt'
+                        priceSource: 'catalog'
                     });
                 }
             }
@@ -247,113 +245,42 @@ async function getUserCreatedTShirts(username) {
     }
 }
 
-// Função para buscar Shirts (categoria 11)
-async function getUserCreatedShirts(username) {
-    try {
-        const data = await makeRequest(
-            `https://catalog.roblox.com/v1/search/items/details?Category=11&CreatorName=${encodeURIComponent(username)}&limit=50`
-        );
-        
-        const shirts = [];
-        const seenIds = new Set();
-        
-        if (data.data && Array.isArray(data.data)) {
-            for (const item of data.data) {
-                const price = parseInt(item.price) || 0;
-                if (!seenIds.has(item.id)) {
-                    seenIds.add(item.id);
-                    shirts.push({
-                        id: item.id,
-                        name: item.name,
-                        displayName: item.name,
-                        price: price,
-                        hasPrice: price > 0,
-                        priceSource: 'catalog',
-                        itemType: 'Shirt'
-                    });
-                }
-            }
-        }
-        
-        return shirts;
-    } catch (error) {
-        return [];
-    }
-}
-
-// Função para buscar Pants (categoria 12)
-async function getUserCreatedPants(username) {
-    try {
-        const data = await makeRequest(
-            `https://catalog.roblox.com/v1/search/items/details?Category=12&CreatorName=${encodeURIComponent(username)}&limit=50`
-        );
-        
-        const pants = [];
-        const seenIds = new Set();
-        
-        if (data.data && Array.isArray(data.data)) {
-            for (const item of data.data) {
-                const price = parseInt(item.price) || 0;
-                if (!seenIds.has(item.id)) {
-                    seenIds.add(item.id);
-                    pants.push({
-                        id: item.id,
-                        name: item.name,
-                        displayName: item.name,
-                        price: price,
-                        hasPrice: price > 0,
-                        priceSource: 'catalog',
-                        itemType: 'Pants'
-                    });
-                }
-            }
-        }
-        
-        return pants;
-    } catch (error) {
-        return [];
-    }
-}
-
 async function collectAllData(userId, username) {
     const startTime = Date.now();
     
-    // Buscar tudo em paralelo
-    const [games, tshirts, shirts, pants] = await Promise.all([
+    const [games, tshirts] = await Promise.all([
         getUserGames(userId),
-        getUserCreatedTShirts(username),
-        getUserCreatedShirts(username),
-        getUserCreatedPants(username)
+        getUserCreatedTShirts(username)
     ]);
     
-    // Combinar todas as roupas em um único array
-    const allClothing = [...tshirts, ...shirts, ...pants];
-    
-    // Buscar gamepasses se houver jogos
-    let gamepasses = [];
-    if (games.length > 0) {
-        gamepasses = await getAllGamepassesWithPrices(games);
+    if (games.length === 0) {
+        return { 
+            gamepasses: [], 
+            tshirts,
+            stats: { 
+                fetchTime: Date.now() - startTime,
+                totalGames: 0,
+                totalGamepasses: 0,
+                withPrice: tshirts.filter(t => t.hasPrice).length,
+                totalValue: tshirts.reduce((sum, t) => sum + t.price, 0)
+            }
+        };
     }
     
+    const gamepasses = await getAllGamepassesWithPrices(games);
+    
     const fetchTime = Date.now() - startTime;
-    const allItems = [...gamepasses, ...allClothing];
+    const allItems = [...gamepasses, ...tshirts];
     const withPrice = allItems.filter(item => item.hasPrice);
     const totalValue = withPrice.reduce((sum, item) => sum + item.price, 0);
     
     return { 
         gamepasses,
         tshirts,
-        shirts,
-        pants,
-        clothing: allClothing, // Array combinado de todas as roupas
         stats: {
             fetchTime,
             totalGames: games.length,
             totalGamepasses: gamepasses.length,
-            totalTShirts: tshirts.length,
-            totalShirts: shirts.length,
-            totalPants: pants.length,
-            totalClothing: allClothing.length,
             withPrice: withPrice.length,
             totalValue
         }
@@ -418,15 +345,7 @@ const server = http.createServer(async (req, res) => {
                     displayName: userInfo.displayName,
                     gamepasses: data.gamepasses,
                     tshirts: data.tshirts,
-                    shirts: data.shirts,
-                    pants: data.pants,
-                    clothing: data.clothing, // Todas as roupas combinadas
-                    totalItems: data.gamepasses.length + data.clothing.length,
-                    totalGamepasses: data.stats.totalGamepasses,
-                    totalTShirts: data.stats.totalTShirts,
-                    totalShirts: data.stats.totalShirts,
-                    totalPants: data.stats.totalPants,
-                    totalClothing: data.stats.totalClothing,
+                    totalItems: data.gamepasses.length + data.tshirts.length,
                     totalWithPrice: data.stats.withPrice,
                     totalValue: data.stats.totalValue,
                     fetchTime: data.stats.fetchTime,
@@ -450,8 +369,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200);
             res.end(JSON.stringify({
                 status: 'running',
-                version: '2.0.0',
-                features: ['gamepasses', 'tshirts', 'shirts', 'pants'],
+                version: '1.0.0',
                 rateLimit: {
                     maxRequests: RATE_LIMIT.MAX_REQUESTS,
                     windowSeconds: RATE_LIMIT.WINDOW_MS / 1000,
@@ -489,7 +407,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
-    console.log('Features: Gamepasses, T-Shirts, Shirts, Pants');
 });
 
 process.on('SIGTERM', () => {
@@ -500,4 +417,5 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
     server.close();
     process.exit(0);
+
 });
