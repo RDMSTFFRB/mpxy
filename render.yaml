@@ -1,3 +1,11 @@
-git add render.yaml
-git commit -m "Add render.yaml"
-git push
+services:
+  - type: web
+    name: roblox-proxy
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: PORT
+        value: 10000
