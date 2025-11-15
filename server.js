@@ -3,7 +3,7 @@ const http = require('http');
 
 let cachedData = {};
 let rateLimitMap = new Map();
-const PORT = process.env.PORT || 20973;
+const PORT = process.env.PORT || 10000;
 
 const RATE_LIMIT = {
     MAX_REQUESTS: 10,
@@ -417,4 +417,5 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
     server.close();
     process.exit(0);
+
 });
