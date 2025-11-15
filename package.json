@@ -1,0 +1,20 @@
+{
+  "name": "roblox-asset-proxy",
+  "version": "1.0.0",
+  "description": "Proxy server for Roblox asset data with rate limiting and caching",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "roblox",
+    "proxy",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
